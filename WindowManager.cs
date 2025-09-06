@@ -13,7 +13,6 @@ internal class WindowManager
     private const uint MONITOR_DEFAULTTONEAREST = 0x2;
     private const int MONITORINFOF_PRIMARY = 0x1;
 
-    private static WindowBindings.WinEventDelegate _procDelegate = new(WinEventProc);
     private static Dictionary<IntPtr, IntPtr> _monitorLastWindow = new();
 
     static WindowManager()
@@ -28,7 +27,18 @@ internal class WindowManager
             (uint)WindowBindings.WinUserEvents.EventSystemForeground,
             (uint)WindowBindings.WinUserEvents.EventSystemForeground,
             IntPtr.Zero,
-            _procDelegate,
+            new WindowBindings.WinEventDelegate(OnWindowFocused),
+            0,
+            0,
+            0
+        );
+
+        // Window move/resize finished event
+        WindowBindings.SetWinEventHook(
+            (uint)WindowBindings.WinUserEvents.EventSystemExitSizeMove,
+            (uint)WindowBindings.WinUserEvents.EventSystemExitSizeMove,
+            IntPtr.Zero,
+            new WindowBindings.WinEventDelegate(OnWindowMovedOrResized),
             0,
             0,
             0
@@ -302,13 +312,36 @@ internal class WindowManager
         return true;
     }
 
-    private static void WinEventProc(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
+    private static void OnWindowFocused(IntPtr hWinEventHook, uint eventType, IntPtr windowHandle, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
     {
-        if (hwnd == IntPtr.Zero)
+        if (windowHandle == IntPtr.Zero)
             return;
 
-        var monitor = MonitorBindings.MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-        _monitorLastWindow[monitor] = hwnd;
+        var monitor = MonitorBindings.MonitorFromWindow(windowHandle, MONITOR_DEFAULTTONEAREST);
+        _monitorLastWindow[monitor] = windowHandle;
+
+        PinWindowIfNotOnPrimaryMonitor(windowHandle);
+    }
+
+    private static void OnWindowMovedOrResized(IntPtr hWinEventHook, uint eventType, IntPtr windowHandle, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
+    {
+        PinWindowIfNotOnPrimaryMonitor(windowHandle);
+    }
+
+    private static void PinWindowIfNotOnPrimaryMonitor(IntPtr windowHandle)
+    {
+        if (windowHandle == IntPtr.Zero)
+            return;
+
+        var monitor = MonitorBindings.MonitorFromWindow(windowHandle, MONITOR_DEFAULTTONEAREST);
+        if (monitor != GetPrimaryMonitor()?.Handle)
+        {
+            VirtualDesktop.PinWindow(windowHandle);
+        }
+        else if (VirtualDesktop.IsPinnedWindow(windowHandle))
+        {
+            VirtualDesktop.UnpinWindow(windowHandle);
+        }
     }
 
     private static (int x, int y) GetMonitorCenter(MonitorInfo monitor)

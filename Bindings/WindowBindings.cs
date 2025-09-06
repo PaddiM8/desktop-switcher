@@ -131,5 +131,6 @@ static class WindowBindings
     public enum WinUserEvents
     {
         EventSystemForeground = 0x3,
+        EventSystemExitSizeMove = 0x000B,
     }
 }
