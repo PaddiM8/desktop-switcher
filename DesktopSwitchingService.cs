@@ -11,10 +11,13 @@ public class DesktopSwitchingService : IDisposable
             _hotKeyManager.UnregisterHotKey(id);
     }
 
-    public void RegisterHotKeys()
+    public void Initialise()
     {
         var windowManager = new WindowManager();
         var workspaceManager = new WorkspaceManager(windowManager);
+
+        if (WindowManager.TaskbarIsVisible())
+            WindowManager.ToggleTaskbar();
 
         workspaceManager.MoveWorkspaceToMonitor(3, GetSecondaryMonitor2());
         workspaceManager.MoveWorkspaceToMonitor(4, GetSecondaryMonitor1());
@@ -48,6 +51,7 @@ public class DesktopSwitchingService : IDisposable
             (Modifiers.Alt, Keys.J, () => WindowManager.FocusNextWindow()),
             (Modifiers.Alt, Keys.K, () => WindowManager.FocusPreviousWindow()),
             (Modifiers.Alt, Keys.L, () => WindowManager.FocusNextWindow()),
+            (Modifiers.Alt, Keys.Space, () => WindowManager.ToggleTaskbar()),
         };
 
         foreach (var (modifiers, keys, handler) in mappings)

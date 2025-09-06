@@ -88,7 +88,9 @@ internal class WindowManager
 
     public static void SetWindowPosition(IntPtr windowHandle, int x, int y)
     {
-        var flags = (uint)(WindowBindings.SetWindowPosFlags.NoSize | WindowBindings.SetWindowPosFlags.NoZOrder | WindowBindings.SetWindowPosFlags.ShowWindow);
+        var flags = WindowBindings.SetWindowPosFlags.NoSize
+            | WindowBindings.SetWindowPosFlags.NoZOrder
+            | WindowBindings.SetWindowPosFlags.ShowWindow;
         WindowBindings.SetWindowPos(windowHandle, IntPtr.Zero, x, y, 0, 0, flags);
     }
 
@@ -104,6 +106,7 @@ internal class WindowManager
         var currentMonitorHandle = MonitorBindings.MonitorFromPoint(new CommonBindings.POINT(Cursor.Position.X, Cursor.Position.Y), MONITOR_DEFAULTTONEAREST);
         if (monitor.Handle == currentMonitorHandle)
         {
+            Thread.Sleep(50);
             if (_workspaceLastWindow.TryGetValue(VirtualDesktop.Current, out var workspaceWindow))
                 WindowBindings.SetForegroundWindow(workspaceWindow);
 
@@ -111,7 +114,12 @@ internal class WindowManager
         }
 
         if (_monitorLastWindow.TryGetValue(monitor.Handle, out var window))
+        {
             WindowBindings.SetForegroundWindow(window);
+        }
+        else
+        {
+        }
 
         var (centerX, centerY) = GetMonitorCenter(monitor);
         CursorBindings.SetCursorPos(centerX, centerY);
@@ -158,9 +166,9 @@ internal class WindowManager
         while (nextWindow != IntPtr.Zero)
         {
             var currentWindow = nextWindow;
-            nextWindow = WindowBindings.GetWindow(nextWindow, (uint)WindowBindings.GetWindowFlags.WindowNext);
+            nextWindow = WindowBindings.GetWindow(nextWindow, WindowBindings.GetWindowFlags.WindowNext);
             if (nextWindow == IntPtr.Zero)
-                nextWindow = WindowBindings.GetWindow(currentWindow, (uint)WindowBindings.GetWindowFlags.WindowFirst);
+                nextWindow = WindowBindings.GetWindow(currentWindow, WindowBindings.GetWindowFlags.WindowFirst);
 
             if (!IsRealWindow(nextWindow))
                 continue;
@@ -186,9 +194,9 @@ internal class WindowManager
         while (previousWindow != IntPtr.Zero)
         {
             var currentWindow = previousWindow;
-            previousWindow = WindowBindings.GetWindow(previousWindow, (uint)WindowBindings.GetWindowFlags.WindowPrev);
+            previousWindow = WindowBindings.GetWindow(previousWindow, WindowBindings.GetWindowFlags.WindowPrev);
             if (previousWindow == IntPtr.Zero)
-                previousWindow = WindowBindings.GetWindow(currentWindow, (uint)WindowBindings.GetWindowFlags.WindowLast);
+                previousWindow = WindowBindings.GetWindow(currentWindow, WindowBindings.GetWindowFlags.WindowLast);
 
             if (!IsRealWindow(previousWindow))
                 continue;
@@ -286,15 +294,68 @@ internal class WindowManager
             IntPtr.Zero
         );
 
-        var list = new List<string>();
-        foreach (var window in windows)
-        {
-            var builder = new StringBuilder(256);
-            WindowBindings.GetWindowText(window, builder, builder.Capacity);
-            list.Add(builder.ToString());
-        }
-
         return windows;
+    }
+
+    public static bool TaskbarIsVisible()
+    {
+        var primary = WindowBindings.FindWindow("Shell_TrayWnd", null);
+        if (primary == IntPtr.Zero)
+            return true;
+
+        const uint ABM_GETSTATE = 0x4;
+        const int ABS_AUTOHIDE = 0x1;
+        var abd = new WindowBindings.APPBARDATA
+        {
+            cbSize = Marshal.SizeOf(typeof(WindowBindings.APPBARDATA)),
+            hWnd = primary,
+        };
+        var currentState = WindowBindings.SHAppBarMessage(ABM_GETSTATE, ref abd);
+
+        return (currentState &= ABS_AUTOHIDE) == 0;
+    }
+
+    public static void ToggleTaskbar()
+    {
+        var primary = WindowBindings.FindWindow("Shell_TrayWnd", null);
+        if (primary == IntPtr.Zero)
+            return;
+
+        const uint ABM_GETSTATE = 0x4;
+        const uint ABM_SETSTATE = 0xa;
+        const int ABS_AUTOHIDE = 0x1;
+        const int ABS_ALWAYSONTOP = 0x2;
+        var abd = new WindowBindings.APPBARDATA
+        {
+            cbSize = Marshal.SizeOf(typeof(WindowBindings.APPBARDATA)),
+            hWnd = primary,
+        };
+        var currentState = WindowBindings.SHAppBarMessage(ABM_GETSTATE, ref abd);
+
+        // Toggle taskbar auto hide
+        var shouldShow = (currentState &= ABS_AUTOHIDE) != 0;
+        abd.lParam = shouldShow
+            ? ABS_ALWAYSONTOP
+            : ABS_AUTOHIDE;
+        var showWindowFlags = shouldShow
+            ? WindowBindings.ShowWindowFlags.Show
+            : WindowBindings.ShowWindowFlags.Hide;
+
+        WindowBindings.SHAppBarMessage(ABM_SETSTATE, ref abd);
+        WindowBindings.ShowWindow(primary, showWindowFlags);
+        // ShowWindow doesn't seem to be very reliable so we have to do it twice
+        Thread.Sleep(50);
+        WindowBindings.ShowWindow(primary, showWindowFlags);
+
+        var secondary = IntPtr.Zero;
+        while ((secondary = WindowBindings.FindWindowEx(IntPtr.Zero, secondary, "Shell_SecondaryTrayWnd", null)) != IntPtr.Zero)
+        {
+            abd.hWnd = secondary;
+            WindowBindings.SHAppBarMessage(ABM_SETSTATE, ref abd);
+            WindowBindings.ShowWindow(secondary, showWindowFlags);
+            Thread.Sleep(50);
+            WindowBindings.ShowWindow(primary, showWindowFlags);
+        }
     }
 
     private static bool IsRealWindow(IntPtr windowHandle)

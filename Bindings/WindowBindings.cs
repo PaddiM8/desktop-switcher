@@ -18,13 +18,15 @@ static class WindowBindings
     public static extern bool SetForegroundWindow(IntPtr hWnd);
 
     [DllImport("user32.dll")]
-    public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+    public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, SetWindowPosFlags uFlags);
 
     [Flags]
     public enum SetWindowPosFlags : uint
     {
         NoSize = 0x1,
+        NoMove = 0x2,
         NoZOrder = 0x4,
+        FrameChanged = 0x20,
         ShowWindow = 0x40,
     }
 
@@ -33,6 +35,12 @@ static class WindowBindings
 
     [DllImport("user32.dll")]
     public static extern bool SetWindowPlacement(IntPtr hWnd, ref WINDOWPLACEMENT lpwndpl);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern long GetWindowLongPtr(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern long SetWindowLongPtr(IntPtr hWnd, int nIndex, long dwNewLong);
 
     [StructLayout(LayoutKind.Sequential)]
     public struct WINDOWPLACEMENT
@@ -45,6 +53,9 @@ static class WindowBindings
         public CommonBindings.RECT CcNormalPosition;
         public CommonBindings.RECT CcDevice;
     }
+
+    [DllImport("user32.dll")]
+    public static extern bool ShowWindow(IntPtr hWnd, ShowWindowFlags swFlags);
 
     [Flags]
     public enum ShowWindowFlags
@@ -62,8 +73,43 @@ static class WindowBindings
         Restore = 9,
     }
 
+    [Flags]
+    public enum WindowStyleFlags : long
+    {
+        Border = 0x00800000L,
+        Caption	= 0x00C00000L,
+        Child = 0x40000000L,
+        Childwindow	= 0x40000000L,
+        Clipchildren = 0x02000000L,
+        Clipsiblings = 0x04000000L,
+        Disabled = 0x08000000L,
+        Dlgframe = 0x00400000L,
+        Group = 0x00020000L,
+        Hscroll	= 0x00100000L,
+        Iconic = 0x20000000L,
+        Maximize = 0x01000000L,
+        Maximizebox	= 0x00010000L,
+        Minimize = 0x20000000L,
+        Minimizebox	= 0x00020000L,
+        Overlapped = 0x00000000L,
+        Popup = 0x80000000L,
+        Sizebox	= 0x00040000L,
+        Sysmenu	= 0x00080000L,
+        Tabstop	= 0x00010000L,
+        Thickframe	= 0x00040000L,
+        Tiled = 0x00000000L,
+        Visible	= 0x10000000L,
+        Vscroll = 0x00200000L,
+    }
+
     [DllImport("user32.dll")]
     public static extern IntPtr GetDesktopWindow();
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr FindWindow(string lpClassName, string? lpWindowName);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern IntPtr FindWindowEx(IntPtr hwndParent, IntPtr hwndChildAfter, string lpszClass, string? lpszWindow);
 
     [DllImport("user32.dll")]
     public static extern bool GetWindowRect(IntPtr hWnd, out CommonBindings.RECT lpRect);
@@ -91,7 +137,7 @@ static class WindowBindings
     public static extern IntPtr GetTopWindow(IntPtr hWnd);
 
     [DllImport("user32.dll")]
-    public static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
+    public static extern IntPtr GetWindow(IntPtr hWnd, GetWindowFlags uCmd);
 
     [Flags]
     public enum GetWindowFlags
@@ -130,6 +176,23 @@ static class WindowBindings
 
     [DllImport("user32.dll")]
     public static extern uint GetWindowLong(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll")]
+    public static extern bool SystemParametersInfo(int uAction, int uParam, ref CommonBindings.RECT lpvParam, int fuWinIni);
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct APPBARDATA
+    {
+        public int cbSize;
+        public IntPtr hWnd;
+        public uint uCallbackMessage;
+        public uint uEdge;
+        public CommonBindings.RECT rc;
+        public int lParam;
+    }
+
+    [DllImport("shell32.dll", CallingConvention = CallingConvention.StdCall)]
+    public static extern uint SHAppBarMessage(uint dwMessage, ref APPBARDATA pData);
 
     public enum WinUserEvents
     {

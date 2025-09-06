@@ -25,9 +25,10 @@ internal static class Program
             try
             {
                 using var desktopSwitchingService = new DesktopSwitchingService();
-                desktopSwitchingService.RegisterHotKeys();
+                desktopSwitchingService.Initialise();
 
                 Application.Run(new DesktopSwitcherApp());
+                break;
             }
             catch
             {

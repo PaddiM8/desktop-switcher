@@ -50,15 +50,15 @@ class WorkspaceManager
 
     public void SwitchToWorkspace(int index)
     {
-        VirtualDesktop.GetDesktops().ElementAtOrDefault(index)?.Switch();
-
-        if (_workspaceByMonitor.TryGetValue(index, out var monitor))
+        if (_workspaceByMonitor.TryGetValue(index, out var monitor) && monitor.Kind != MonitorKind.Primary)
         {
             _windowManager.FocusMonitor(monitor);
-
-            if (monitor.Kind != MonitorKind.Primary)
-                return;
+            return;
         }
+
+        VirtualDesktop.GetDesktops().ElementAtOrDefault(index)?.Switch();
+        if (monitor != null)
+            _windowManager.FocusMonitor(monitor);
     }
 
     public void MoveWindowToWorkspace(int index)
