@@ -1,61 +1,62 @@
-﻿using System.Runtime.InteropServices;
+﻿using DesktopSwitcher.Bindings;
 
-namespace DesktopSwitcher
+using System.Runtime.InteropServices;
+
+namespace DesktopSwitcher;
+
+class HotKeyManager : IDisposable
 {
-    class HotKeyManager : IDisposable
+    private readonly MessageWindow _messageWindow = new();
+
+    public void Dispose()
     {
-        private readonly MessageWindow _messageWindow = new();
-
-        public void Dispose()
-        {
-            _messageWindow.Dispose();
-        }
-
-        public int? RegisterHotKey(Modifiers modifiers, Keys keys, Action handler)
-        {
-            var id = _messageWindow.RegisterHandler(handler);
-
-            if (!Bindings.RegisterHotKey(_messageWindow.Handle, id, (uint)modifiers, (uint)keys))
-                return null;
-
-            return id;
-        }
-
-        public bool UnregisterHotKey(int id)
-        {
-            _messageWindow.UnregisterHandler(id);
-
-            return Bindings.UnregisterHotKey(_messageWindow.Handle, id);
-        }
+        _messageWindow.Dispose();
     }
 
-    class MessageWindow : Form
+    public int? RegisterHotKey(Modifiers modifiers, Keys keys, Action handler)
     {
-        private static int _nextId = 9000;
+        var id = _messageWindow.RegisterHandler(handler);
 
-        private readonly Dictionary<int, Action> _hotKeyHandlersById = new();
+        if (!HotKeyBindings.RegisterHotKey(_messageWindow.Handle, id, (uint)modifiers, (uint)keys))
+            return null;
 
-        public int RegisterHandler(Action handler)
-        {
-            var id = _nextId;
-            _hotKeyHandlersById[id] = handler;
-            _nextId++;
+        return id;
+    }
 
-            return id;
-        }
+    public bool UnregisterHotKey(int id)
+    {
+        _messageWindow.UnregisterHandler(id);
 
-        public void UnregisterHandler(int id)
-        {
-            _hotKeyHandlersById.Remove(id);
-        }
+        return HotKeyBindings.UnregisterHotKey(_messageWindow.Handle, id);
+    }
+}
 
-        protected override void WndProc(ref Message message)
-        {
-            const int WM_HOTKEY = 0x0312;
-            if (message.Msg == WM_HOTKEY && _hotKeyHandlersById.TryGetValue(message.WParam.ToInt32(), out var handler))
-                handler.Invoke();
+class MessageWindow : Form
+{
+    private static int _nextId = 9000;
 
-            base.WndProc(ref message);
-        }
+    private readonly Dictionary<int, Action> _hotKeyHandlersById = new();
+
+    public int RegisterHandler(Action handler)
+    {
+        var id = _nextId;
+        _hotKeyHandlersById[id] = handler;
+        _nextId++;
+
+        return id;
+    }
+
+    public void UnregisterHandler(int id)
+    {
+        _hotKeyHandlersById.Remove(id);
+    }
+
+    protected override void WndProc(ref Message message)
+    {
+        const int WM_HOTKEY = 0x0312;
+        if (message.Msg == WM_HOTKEY && _hotKeyHandlersById.TryGetValue(message.WParam.ToInt32(), out var handler))
+            handler.Invoke();
+
+        base.WndProc(ref message);
     }
 }
