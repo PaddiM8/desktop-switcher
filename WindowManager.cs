@@ -13,7 +13,10 @@ internal class WindowManager
     private const uint MONITOR_DEFAULTTONEAREST = 0x2;
     private const int MONITORINFOF_PRIMARY = 0x1;
 
-    private static Dictionary<IntPtr, IntPtr> _monitorLastWindow = new();
+    private static Dictionary<IntPtr, IntPtr> _monitorLastWindow = [];
+    private static Dictionary<VirtualDesktop, IntPtr> _workspaceLastWindow = [];
+    private readonly WindowBindings.WinEventDelegate _onWindowFocused;
+    private readonly WindowBindings.WinEventDelegate _onWindowMovedOrResized;
 
     static WindowManager()
     {
@@ -23,22 +26,24 @@ internal class WindowManager
     public WindowManager()
     {
         // Window focus changed event
+        _onWindowFocused = new WindowBindings.WinEventDelegate(OnWindowFocused);
         WindowBindings.SetWinEventHook(
             (uint)WindowBindings.WinUserEvents.EventSystemForeground,
             (uint)WindowBindings.WinUserEvents.EventSystemForeground,
             IntPtr.Zero,
-            new WindowBindings.WinEventDelegate(OnWindowFocused),
+            _onWindowFocused,
             0,
             0,
             0
         );
 
         // Window move/resize finished event
+        _onWindowMovedOrResized = new WindowBindings.WinEventDelegate(OnWindowMovedOrResized);
         WindowBindings.SetWinEventHook(
             (uint)WindowBindings.WinUserEvents.EventSystemExitSizeMove,
             (uint)WindowBindings.WinUserEvents.EventSystemExitSizeMove,
             IntPtr.Zero,
-            new WindowBindings.WinEventDelegate(OnWindowMovedOrResized),
+            _onWindowMovedOrResized,
             0,
             0,
             0
@@ -98,12 +103,15 @@ internal class WindowManager
     {
         var currentMonitorHandle = MonitorBindings.MonitorFromPoint(new CommonBindings.POINT(Cursor.Position.X, Cursor.Position.Y), MONITOR_DEFAULTTONEAREST);
         if (monitor.Handle == currentMonitorHandle)
+        {
+            if (_workspaceLastWindow.TryGetValue(VirtualDesktop.Current, out var workspaceWindow))
+                WindowBindings.SetForegroundWindow(workspaceWindow);
+
             return;
+        }
 
         if (_monitorLastWindow.TryGetValue(monitor.Handle, out var window))
-        {
             WindowBindings.SetForegroundWindow(window);
-        }
 
         var (centerX, centerY) = GetMonitorCenter(monitor);
         CursorBindings.SetCursorPos(centerX, centerY);
@@ -319,6 +327,7 @@ internal class WindowManager
 
         var monitor = MonitorBindings.MonitorFromWindow(windowHandle, MONITOR_DEFAULTTONEAREST);
         _monitorLastWindow[monitor] = windowHandle;
+        _workspaceLastWindow[VirtualDesktop.Current] = windowHandle;
 
         PinWindowIfNotOnPrimaryMonitor(windowHandle);
     }

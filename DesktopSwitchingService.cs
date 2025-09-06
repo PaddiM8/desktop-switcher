@@ -1,16 +1,17 @@
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Windows.Threading;
-using WindowsDesktop;
-
 namespace DesktopSwitcher;
 
-public class Worker : BackgroundService
+public class DesktopSwitchingService : IDisposable
 {
     private readonly HotKeyManager _hotKeyManager = new();
-    private readonly List<int> _hotKeyIds = new();
+    private readonly List<int> _hotKeyIds = [];
 
-    protected override Task ExecuteAsync(CancellationToken stoppingToken)
+    public void Dispose()
+    {
+        foreach (var id in _hotKeyIds)
+            _hotKeyManager.UnregisterHotKey(id);
+    }
+
+    public void RegisterHotKeys()
     {
         var windowManager = new WindowManager();
         var workspaceManager = new WorkspaceManager(windowManager);
@@ -55,21 +56,6 @@ public class Worker : BackgroundService
             if (id.HasValue)
                 _hotKeyIds.Add(id.Value);
         }
-
-        VirtualDesktop.PinApplication("MSTeams_8wekyb3d8bbwe!MSTeams");
-        VirtualDesktop.PinApplication("Microsoft.OutlookForWindows_8wekyb3d8bbwe!Microsoft.OutlookforWindows");
-
-        Application.Run();
-
-        return Task.CompletedTask;
-    }
-
-    public override Task StopAsync(CancellationToken cancellationToken)
-    {
-        foreach (var id in _hotKeyIds)
-            _hotKeyManager.UnregisterHotKey(id);
-
-        return Task.CompletedTask;
     }
 
     private MonitorInfo GetSecondaryMonitor1()

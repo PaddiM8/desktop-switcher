@@ -1,7 +1,18 @@
-using DesktopSwitcher;
+namespace DesktopSwitcher;
 
-var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddHostedService<Worker>();
+using System.Diagnostics;
 
-var host = builder.Build();
-host.Run();
+internal static class Program
+{
+    [STAThread]
+    private static void Main()
+    {
+        Application.EnableVisualStyles();
+        Application.SetCompatibleTextRenderingDefault(false);
+
+        using var desktopSwitchingService = new DesktopSwitchingService();
+        desktopSwitchingService.RegisterHotKeys();
+
+        Application.Run(new DesktopSwitcherApp());
+    }
+}
