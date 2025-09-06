@@ -55,7 +55,15 @@ class MessageWindow : Form
     {
         const int WM_HOTKEY = 0x0312;
         if (message.Msg == WM_HOTKEY && _hotKeyHandlersById.TryGetValue(message.WParam.ToInt32(), out var handler))
-            handler.Invoke();
+        {
+            try
+            {
+                handler.Invoke();
+            }
+            catch
+            {
+            }
+        }
 
         base.WndProc(ref message);
     }

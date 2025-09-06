@@ -1,8 +1,13 @@
 ﻿namespace DesktopSwitcher.Bindings;
 
+using System.DirectoryServices.ActiveDirectory;
+using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
+using System.Windows.Controls.Primitives;
+using System.Windows.Controls;
 
 using static System.Windows.Forms.AxHost;
+using System.Text;
 
 static class WindowBindings
 {
@@ -67,6 +72,61 @@ static class WindowBindings
     public static extern IntPtr SetWinEventHook(uint eventMin, uint eventMax, IntPtr hmodWinEventProc, WinEventDelegate lpfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
 
     public delegate void WinEventDelegate(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
+
+    public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr OpenInputDesktop(uint dwFlags, bool fInherit, uint dwDesiredAccess);
+
+    [DllImport("user32.dll")]
+    public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    public static extern bool EnumDesktopWindows(IntPtr hDesktop, EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetTopWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
+
+    [Flags]
+    public enum GetWindowFlags
+    {
+        WindowFirst = 0,
+        WindowLast = 1,
+        WindowNext = 2,
+        WindowPrev = 3,
+        Owner = 4,
+        Child = 5,
+        EnabledPopup = 6,
+    }
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetAncestor(IntPtr hwnd, GetAncestorFlags gaFlags);
+
+    [Flags]
+    public enum GetAncestorFlags : uint
+    {
+        Parent = 1,
+        Root = 2,
+        RootOwner = 3,
+    }
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetLastActivePopup(IntPtr hwnd);
+
+    [DllImport("user32.dll")]
+    public static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern int GetWindowTextLength(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowLong(IntPtr hWnd, int nIndex);
 
     public enum WinUserEvents
     {

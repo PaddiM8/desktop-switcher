@@ -22,6 +22,9 @@ static class MonitorBindings
     [DllImport("user32.dll")]
     public static extern IntPtr MonitorFromPoint(CommonBindings.POINT pt, uint dwFlags);
 
+    [DllImport("user32.dll")]
+    public static extern IntPtr MonitorFromRect(ref CommonBindings.RECT lprc, uint dwFlags);
+
     [DllImport("Shcore.dll")]
     public static extern int GetDpiForMonitor(IntPtr hmonitor, MonitorDpiType dpiType, out uint dpiX, out uint dpiY);
 

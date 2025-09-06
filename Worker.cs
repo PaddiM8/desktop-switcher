@@ -43,6 +43,10 @@ public class Worker : BackgroundService
             (Modifiers.Alt | Modifiers.Shift, Keys.Q, () => WindowManager.CloseWindow()),
             (Modifiers.Alt | Modifiers.Shift, Keys.W, () => WorkspaceManager.TogglePinned()),
             (Modifiers.Alt, Keys.F, () => WindowManager.ToggleFullscreen()),
+            (Modifiers.Alt, Keys.H, () => WindowManager.FocusPreviousWindow()),
+            (Modifiers.Alt, Keys.J, () => WindowManager.FocusNextWindow()),
+            (Modifiers.Alt, Keys.K, () => WindowManager.FocusPreviousWindow()),
+            (Modifiers.Alt, Keys.L, () => WindowManager.FocusNextWindow()),
         };
 
         foreach (var (modifiers, keys, handler) in mappings)

@@ -3,9 +3,13 @@
 using DesktopSwitcher.Bindings;
 
 using System.Runtime.InteropServices;
+using System.Text;
+
+using WindowsDesktop;
 
 internal class WindowManager
 {
+    private const uint MONITOR_DEFAULTTONULL = 0x0;
     private const uint MONITOR_DEFAULTTONEAREST = 0x2;
     private const int MONITORINFOF_PRIMARY = 0x1;
 
@@ -117,6 +121,70 @@ internal class WindowManager
             ?? monitors.First();
     }
 
+    public static IntPtr GetMonitorHandle(IntPtr? windowHandle = null)
+    {
+        return MonitorBindings.MonitorFromWindow(
+            windowHandle ?? GetFocusedWindow(),
+            MONITOR_DEFAULTTONEAREST
+        );
+    }
+
+    public static void FocusNextWindow()
+    {
+        var originalWindow = GetFocusedWindow();
+        var monitorHandle = GetMonitorHandle(originalWindow);
+        if (monitorHandle == IntPtr.Zero)
+            return;
+
+        IntPtr nextWindow = originalWindow;
+        while (nextWindow != IntPtr.Zero)
+        {
+            var currentWindow = nextWindow;
+            nextWindow = WindowBindings.GetWindow(nextWindow, (uint)WindowBindings.GetWindowFlags.WindowNext);
+            if (nextWindow == IntPtr.Zero)
+                nextWindow = WindowBindings.GetWindow(currentWindow, (uint)WindowBindings.GetWindowFlags.WindowFirst);
+
+            if (!IsRealWindow(nextWindow))
+                continue;
+
+            if (VirtualDesktop.FromHwnd(nextWindow) == VirtualDesktop.Current)
+                break;
+        }
+
+        if (nextWindow == IntPtr.Zero)
+            return;
+
+        WindowBindings.SetForegroundWindow(nextWindow);
+    }
+
+    public static void FocusPreviousWindow()
+    {
+        var originalWindow = GetFocusedWindow();
+        var monitorHandle = GetMonitorHandle(originalWindow);
+        if (monitorHandle == IntPtr.Zero)
+            return;
+
+        IntPtr previousWindow = originalWindow;
+        while (previousWindow != IntPtr.Zero)
+        {
+            var currentWindow = previousWindow;
+            previousWindow = WindowBindings.GetWindow(previousWindow, (uint)WindowBindings.GetWindowFlags.WindowPrev);
+            if (previousWindow == IntPtr.Zero)
+                previousWindow = WindowBindings.GetWindow(currentWindow, (uint)WindowBindings.GetWindowFlags.WindowLast);
+
+            if (!IsRealWindow(previousWindow))
+                continue;
+
+            if (VirtualDesktop.FromHwnd(previousWindow) == VirtualDesktop.Current)
+                break;
+        }
+
+        if (previousWindow == IntPtr.Zero)
+            return;
+
+        WindowBindings.SetForegroundWindow(previousWindow);
+    }
+
     public static List<MonitorInfo> GetMonitors()
     {
         var infoPairs = new List<(MonitorInfo info, bool isPrimary)>();
@@ -178,6 +246,60 @@ internal class WindowManager
         return infoPairs
             .Select(x => x.info)
             .ToList();
+    }
+
+    public static List<IntPtr> GetWindowsInWorkspace()
+    {
+        var windows = new List<IntPtr>();
+        WindowBindings.EnumDesktopWindows(
+            IntPtr.Zero,
+            (windowHandle, lParam) =>
+            {
+                if (!IsRealWindow(windowHandle))
+                    return true;
+
+                if (VirtualDesktop.FromHwnd(windowHandle) != VirtualDesktop.Current)
+                    return true;
+
+                windows.Add(windowHandle);
+
+                return true;
+            },
+            IntPtr.Zero
+        );
+
+        var list = new List<string>();
+        foreach (var window in windows)
+        {
+            var builder = new StringBuilder(256);
+            WindowBindings.GetWindowText(window, builder, builder.Capacity);
+            list.Add(builder.ToString());
+        }
+
+        return windows;
+    }
+
+    private static bool IsRealWindow(IntPtr windowHandle)
+    {
+        if (!WindowBindings.IsWindowVisible(windowHandle))
+            return false;
+
+        const int GWL_EXSTYLE = -20;
+        const uint WS_EX_TOOLWINDOW = 0x00000080;
+        const uint WS_EX_APPWINDOW = 0x00040000;
+        uint exStyle = WindowBindings.GetWindowLong(windowHandle, GWL_EXSTYLE);
+
+        if ((exStyle & WS_EX_TOOLWINDOW) != 0)
+            return false;
+
+        if ((exStyle & WS_EX_APPWINDOW) != 0)
+            return true;
+
+        int length = WindowBindings.GetWindowTextLength(windowHandle);
+        if (length == 0)
+            return false;
+
+        return true;
     }
 
     private static void WinEventProc(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
