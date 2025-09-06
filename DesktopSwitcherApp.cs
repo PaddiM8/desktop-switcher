@@ -4,36 +4,37 @@ using System.Windows.Forms;
 
 public class DesktopSwitcherApp : Form
 {
-    private readonly NotifyIcon trayIcon;
-    private readonly ContextMenuStrip trayMenu;
+    private readonly NotifyIcon _trayIcon;
+    private readonly ContextMenuStrip _trayMenu;
 
     public DesktopSwitcherApp()
     {
-        trayMenu = new ContextMenuStrip();
-        trayMenu.Items.Add("Exit", null, (s, e) => ExitApp());
+        _trayMenu = new ContextMenuStrip();
+        _trayMenu.Items.Add("Exit", null, (s, e) => ExitApp());
 
-        trayIcon = new NotifyIcon
+        _trayIcon = new NotifyIcon
         {
             Icon = SystemIcons.Application,
             Text = "Desktop Switcher",
             Visible = true,
-            ContextMenuStrip = trayMenu
+            ContextMenuStrip = _trayMenu
         };
 
         ShowInTaskbar = false;
         WindowState = FormWindowState.Minimized;
-        Load += (s, e) => Hide();
+        Load += (_, _) => Hide();
     }
 
     private void ExitApp()
     {
-        trayIcon.Visible = false;
+        _trayIcon.Visible = false;
         Application.Exit();
     }
 
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
-        trayIcon.Visible = false;
+        _trayIcon.Visible = false;
+
         base.OnFormClosing(e);
     }
 }

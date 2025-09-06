@@ -63,6 +63,9 @@ static class WindowBindings
     }
 
     [DllImport("user32.dll")]
+    public static extern IntPtr GetDesktopWindow();
+
+    [DllImport("user32.dll")]
     public static extern bool GetWindowRect(IntPtr hWnd, out CommonBindings.RECT lpRect);
 
     [DllImport("user32.dll", CharSet = CharSet.Auto)]

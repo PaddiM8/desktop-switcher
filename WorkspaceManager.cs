@@ -66,11 +66,11 @@ class WorkspaceManager
         var window = WindowManager.GetFocusedWindow();
         if (_workspaceByMonitor.TryGetValue(index, out var monitor))
         {
-            _windowManager.MoveWindowToMonitor(window, monitor);
             _windowManager.FocusMonitor(monitor);
 
             if (monitor.Kind != MonitorKind.Primary)
             {
+                _windowManager.MoveWindowToMonitor(window, monitor);
                 VirtualDesktop.PinWindow(window);
                 return;
             }

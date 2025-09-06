@@ -299,6 +299,9 @@ internal class WindowManager
 
     private static bool IsRealWindow(IntPtr windowHandle)
     {
+        if (windowHandle == IntPtr.Zero)
+            return false;
+
         if (!WindowBindings.IsWindowVisible(windowHandle))
             return false;
 
@@ -339,7 +342,7 @@ internal class WindowManager
 
     private static void PinWindowIfNotOnPrimaryMonitor(IntPtr windowHandle)
     {
-        if (windowHandle == IntPtr.Zero)
+        if (!IsRealWindow(windowHandle))
             return;
 
         var monitor = MonitorBindings.MonitorFromWindow(windowHandle, MONITOR_DEFAULTTONEAREST);
